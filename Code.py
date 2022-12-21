@@ -27,13 +27,13 @@ def getTileNeighbors(_tiles):
         for otherTile in _tiles:
             if otherTile.x == tile.x and otherTile.y == tile.y:
                 break
-            if otherTile.x == tile.x +1 and otherTile.y == tile.y and not otherTile.in_range_of_recycler:
+            if otherTile.x == tile.x +1 and otherTile.y == tile.y and otherTile.owner == OPP:
                 currentNeibCount += 1
-            elif otherTile.x == tile.x -1 and otherTile.y == tile.y and not otherTile.in_range_of_recycler:
+            elif otherTile.x == tile.x -1 and otherTile.y == tile.y and otherTile.owner == OPP:
                 currentNeibCount += 1
-            elif otherTile.x == tile.x and otherTile.y == tile.y+1 and not otherTile.in_range_of_recycler:
+            elif otherTile.x == tile.x and otherTile.y == tile.y+1 and otherTile.owner == OPP:
                 currentNeibCount += 1
-            elif otherTile.x == tile.x and otherTile.y == tile.y-1 and not otherTile.in_range_of_recycler:
+            elif otherTile.x == tile.x and otherTile.y == tile.y-1 and otherTile.owner == OPP:
                 currentNeibCount += 1
         dictTileToNeibs[(tile.x, tile.y)] = currentNeibCount
     return dictTileToNeibs
@@ -58,6 +58,9 @@ def getTileBattleFront(tileops, mytiles):
                     closest = mytile
     return closest
 
+def getDistance(a, b):
+    return abs(a.x-b.x) + abs(a.y-b.y)
+
 # game loop
 while True:
     tiles = []
@@ -73,7 +76,7 @@ while True:
     neutral_tiles = []
 
     my_matter, opp_matter = [int(i) for i in input().split()]
-    
+
     for y in range(height):
         for x in range(width):
             # owner: 1 = me, 0 = foe, -1 = neutral
@@ -94,7 +97,7 @@ while True:
                     opp_units.append(tile)
                 elif tile.recycler:
                     opp_recyclers.append(tile)
-            else:
+            elif tile.scrap_amount > 0:
                 neutral_tiles.append(tile)
 
     actions = []
@@ -132,20 +135,32 @@ while True:
     for tile in opp_units:
         targets.append(tile)
     targets.sort(key=lambda x: x.units, reverse=True)
+    #st = ''
+    #for tile in targets:
+    #    st += '(' + str(tile.x) + ', ' + str(tile.y) + ') '
+    #actions.append('MESSAGE ' + st)
+
+    # find targeted location (neutral or opp)
+    targetedTiles = opp_tiles.copy()
+    targetedTiles += neutral_tiles
+
     st = ''
-    for tile in targets:
+    for tile in targetedTiles:
         st += '(' + str(tile.x) + ', ' + str(tile.y) + ') '
     #actions.append('MESSAGE ' + st)
 
+
+    # move units
     for tile in my_units:
-        target = None # TODO: pick a destination tile
-        for t in targets:
-            if tile.units >= t.units :
-                target = t
-                targets.remove(t)
-                break
+        targetedTiles.sort(key=lambda p: getDistance(tile, p))
+        target = None
+
+        if len(targetedTiles) > 0:
+            target = targetedTiles[0]
+            targetedTiles.remove(target)
+        
         if target:
-            amount = t.units # TODO: pick amount of units to move
+            amount = tile.units # TODO: pick amount of units to move
             actions.append('MOVE {} {} {} {} {}'.format(amount, tile.x, tile.y, target.x, target.y))
 
     # To debug: print("Debug messages...", file=sys.stderr, flus
